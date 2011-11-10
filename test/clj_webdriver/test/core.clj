@@ -12,12 +12,20 @@
 (def test-port 5744)
 (def test-host "localhost")
 (def test-base-url (str "http://" test-host ":" test-port "/"))
-(def dr (to (new-driver :firefox {:strategy :basic,
-                                  :args [],
-                                  :include [ (fn [element] (= (attribute element :class) "external"))
-                                             {:css "ol#pages"}]}) test-base-url))
-(def wdr (start :firefox test-base-url :webdriver))
-(def dr-plain (to (new-driver :firefox) test-base-url))
+
+(declare ^{:dynamic true} dr)
+(declare ^{:dynamic true} wdr)
+(declare ^{:dynamic true} dr-plain)
+
+(defn create-browser-fixtures [f]
+  (binding [dr (to (new-driver :firefox {:strategy :basic,
+                                    :args [],
+                                    :include [ (fn [element] (= (attribute element :class) "external"))
+                                               {:css "ol#pages"}]}) test-base-url)
+            wdr (start :firefox test-base-url :webdriver)
+            dr-plain (to (new-driver :firefox) test-base-url)]
+    (f)))
+
 
 (defn start-server [f]
   (loop [server (run-jetty #'web-app/routes {:port test-port, :join? false})]
@@ -46,7 +54,7 @@
   (cache/seed dr {:url (current-url dr), {:query [:foo]} "bar"})
   (f))
 
-(use-fixtures :once start-server quit-browser-fixture)
+(use-fixtures :once start-server create-browser-fixtures quit-browser-fixture)
 (use-fixtures :each reset-browser-fixture seed-driver-cache)
 
 
